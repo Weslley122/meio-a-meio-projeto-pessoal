@@ -1,0 +1,138 @@
+@import "tailwindcss";
+
+/*
+  Cores do app. Os nomes vêm do próprio depósito: piche, calçada, laranja do letreiro.
+  O app é sempre claro, como os apps de compra: fundo quase branco, cards brancos,
+  preto só na barra do topo e laranja onde há ação. (Seguir o modo escuro do sistema
+  deixava a loja inteira em cinza-chumbo e apagava os produtos.)
+  O Tailwind só aponta para essas variáveis (@theme inline): "bg-papel", "text-tinta"...
+*/
+:root {
+  --chao: #F4F3F0;          /* fundo da página: quase branco, um toque de calçada */
+  --papel: #FFFFFF;         /* cards, barras e campos */
+  --tinta: #171513;         /* texto principal */
+  --poeira: #5F5B54;        /* texto secundário (5,9:1 sobre o fundo) */
+  --linha: #E3E0DA;         /* bordas */
+  --laranja: #FF6A1A;       /* letreiro: fundo de botão, etiqueta de preço */
+  --laranja-texto: #B83F00; /* laranja quando é TEXTO sobre fundo claro (4,7:1) */
+  --laranja-claro: #FFE6D5; /* fundo dos ícones de categoria e do pedido ao vivo */
+  --piche: #171513;         /* barra do topo e menu lateral */
+  --piche-texto: #F2F0EB;
+  --piche-poeira: #A8A39B;
+  --vitrine: #EEEDE9;       /* fundo das ilustrações dos produtos */
+  --verde: #1F7A45;
+  --verde-claro: #DDF0E3;
+  --erro: #B42318;
+  --erro-claro: #FDE7E4;
+  color-scheme: light;
+}
+
+@theme inline {
+  --font-sans: "Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif;
+  --font-letreiro: "Bungee", "Atkinson Hyperlegible", ui-sans-serif, sans-serif;
+
+  --color-chao: var(--chao);
+  --color-papel: var(--papel);
+  --color-tinta: var(--tinta);
+  --color-poeira: var(--poeira);
+  --color-linha: var(--linha);
+  --color-laranja: var(--laranja);
+  --color-laranja-texto: var(--laranja-texto);
+  --color-laranja-claro: var(--laranja-claro);
+  --color-piche: var(--piche);
+  --color-piche-texto: var(--piche-texto);
+  --color-piche-poeira: var(--piche-poeira);
+  --color-vitrine: var(--vitrine);
+  --color-verde: var(--verde);
+  --color-verde-claro: var(--verde-claro);
+  --color-erro: var(--erro);
+  --color-erro-claro: var(--erro-claro);
+}
+
+/*
+  Movimento só como resposta a um toque ou a uma mudança real (item entrou na sacola,
+  aba ficou ativa, pedido mudou). Nada fica animando sozinho. Quem pede menos movimento
+  no sistema não vê nenhum (regra no fim do arquivo).
+*/
+@theme {
+  --animate-pulo: pulo 340ms cubic-bezier(0.3, 1.6, 0.5, 1);
+  --animate-pilula: pilula 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-subir: subir 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-aparecer: aparecer 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-aceso: aceso 1.6s ease-out infinite;
+  --animate-aceso-caixa: aceso-caixa 1.6s ease-out infinite;
+
+  @keyframes pulo {
+    0% { transform: scale(0.7); }
+    60% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+  @keyframes pilula {
+    from { transform: scaleX(0.4); opacity: 0.3; }
+    to { transform: scaleX(1); opacity: 1; }
+  }
+  @keyframes subir {
+    from { transform: translateY(18px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+  @keyframes aparecer {
+    from { transform: scale(0.9); opacity: 0.5; }
+    to { transform: none; opacity: 1; }
+  }
+  /* o "ao vivo" do pedido em andamento: um anel que se espalha a partir do ponto */
+  @keyframes aceso {
+    0% { transform: scale(1); opacity: 0.7; }
+    80%, 100% { transform: scale(2.6); opacity: 0; }
+  }
+  @keyframes aceso-caixa {
+    0% { transform: scale(1); opacity: 0.6; }
+    80%, 100% { transform: scale(1.6); opacity: 0; }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-chao font-sans text-tinta antialiased;
+    font-size: 16px;
+    line-height: 1.45;
+  }
+  button {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  :focus-visible {
+    outline: 3px solid var(--laranja);
+    outline-offset: 2px;
+  }
+  /* Preços e números alinham em coluna. */
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Linhas de produtos com rolagem lateral no celular: sem barra visível, com encaixe por card. */
+@utility rolagem-lateral {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* O único movimento automático do app: a barra de entrega grátis enchendo. */
+@utility encher {
+  transition: width 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,6 @@
+node_modules/
+dist/
+web.log
+*.local
+install.log
+install-check.log
