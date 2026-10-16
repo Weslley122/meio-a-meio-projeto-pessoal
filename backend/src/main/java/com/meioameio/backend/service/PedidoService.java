@@ -4,12 +4,14 @@ import com.meioameio.backend.dto.ItemPedidoRequest;
 import com.meioameio.backend.dto.PedidoRequest;
 import com.meioameio.backend.dto.PedidoResponse;
 import com.meioameio.backend.exception.RecursoNaoEncontradoException;
+import com.meioameio.backend.exception.RegraDeNegocioException;
 import com.meioameio.backend.model.ItemPedido;
 import com.meioameio.backend.model.Pedido;
 import com.meioameio.backend.model.Produto;
 import com.meioameio.backend.model.Usuario;
 import com.meioameio.backend.repository.PedidoRepository;
 import com.meioameio.backend.repository.ProdutoRepository;
+import com.meioameio.backend.security.Auditoria;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,13 +25,16 @@ public class PedidoService {
     // Regras de entrega do Meio a Meio do Carlinho
     private static final BigDecimal VALOR_MINIMO_FRETE_GRATIS = new BigDecimal("150.00");
     private static final BigDecimal TAXA_ENTREGA = new BigDecimal("20.00");
+    private static final int ULTIMA_ETAPA = 3; // 0 recebido, 1 separando, 2 a caminho, 3 entregue
 
     private final PedidoRepository pedidoRepository;
     private final ProdutoRepository produtoRepository;
+    private final Auditoria auditoria;
 
-    public PedidoService(PedidoRepository pedidoRepository, ProdutoRepository produtoRepository) {
+    public PedidoService(PedidoRepository pedidoRepository, ProdutoRepository produtoRepository, Auditoria auditoria) {
         this.pedidoRepository = pedidoRepository;
         this.produtoRepository = produtoRepository;
+        this.auditoria = auditoria;
     }
 
     @Transactional
@@ -49,6 +54,8 @@ public class PedidoService {
             item.setPedido(pedido);
             item.setProduto(produto);
             item.setQuantidade(itemReq.getQuantidade());
+            // O preço vem SEMPRE do banco. O app não manda preço, só id e quantidade:
+            // não adianta editar o JavaScript para comprar mais barato.
             item.setPrecoUnitario(produto.getPreco());
             pedido.getItens().add(item);
 
@@ -87,6 +94,10 @@ public class PedidoService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Controle de acesso por objeto (evita IDOR, OWASP API1): o cliente só vê pedido dele.
+     * Pedido de outra pessoa responde 404, e não 403, para nem confirmar que aquele número existe.
+     */
     @Transactional(readOnly = true)
     public PedidoResponse buscarPorId(Long id, Usuario usuarioLogado) {
         Pedido pedido = pedidoRepository.findById(id)
@@ -101,12 +112,24 @@ public class PedidoService {
         return new PedidoResponse(pedido);
     }
 
+    /**
+     * O pedido só anda para a etapa seguinte (0 → 1 → 2 → 3). Não volta e não pula etapa,
+     * nem mesmo para o admin: protege o histórico e deixa a trilha de auditoria coerente.
+     */
     @Transactional
-    public PedidoResponse atualizarStatus(Long id, Integer novoStatus) {
+    public PedidoResponse atualizarStatus(Long id, Integer novoStatus, Usuario admin) {
         Pedido pedido = pedidoRepository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Pedido não encontrado"));
+        int atual = pedido.getStatus();
+        if (atual >= ULTIMA_ETAPA) {
+            throw new RegraDeNegocioException("Esse pedido já foi entregue.");
+        }
+        if (novoStatus == null || novoStatus != atual + 1) {
+            throw new RegraDeNegocioException("O pedido só pode avançar para a próxima etapa.");
+        }
         pedido.setStatus(novoStatus);
         Pedido salvo = pedidoRepository.save(pedido);
+        auditoria.statusAlterado(admin.getId(), salvo.getId(), atual, novoStatus);
         return new PedidoResponse(salvo);
     }
 }

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logs da API.
+  - Console: o padrão do Spring Boot.
+  - logs/seguranca.log: só os eventos de segurança (logger "SEGURANCA", ver Auditoria.java),
+    uma linha por evento no formato chave=valor, pronto para um SIEM ler. Gira por dia e por
+    tamanho e guarda 30 dias.
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <appender name="SEGURANCA_ARQUIVO" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/seguranca.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/seguranca.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>300MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>data=%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} nivel=%level %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="SEGURANCA" level="INFO">
+        <appender-ref ref="SEGURANCA_ARQUIVO"/>
+    </logger>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

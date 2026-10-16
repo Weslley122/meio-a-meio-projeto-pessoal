@@ -1,5 +1,7 @@
 package com.meioameio.backend.model;
 
+import com.meioameio.backend.security.CriptografiaCampo;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -16,9 +18,12 @@ public class Usuario {
     @Column(nullable = false, unique = true, length = 30)
     private String telefone;
 
-    @Column(nullable = false, length = 250)
+    // Dado pessoal: cifrado com AES-256-GCM antes de ir para o banco (ver CriptografiaCampo).
+    @Convert(converter = CriptografiaCampo.class)
+    @Column(nullable = false, length = 600)
     private String endereco;
 
+    // Hash BCrypt (com salt aleatório embutido), nunca a senha em si.
     @Column(nullable = false, length = 255)
     private String senha;
 

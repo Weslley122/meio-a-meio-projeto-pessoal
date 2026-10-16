@@ -1,0 +1,49 @@
+# Integração contínua com verificações de segurança (DevSecOps):
+# todo push e pull request compila, roda os testes (incluindo SegurancaTest) e audita dependências.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Menor privilégio também no pipeline: o token do GitHub Actions só lê o código.
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Back-end (testes + segurança)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Testes (inclui os testes de ataque em SegurancaTest)
+        run: ./mvnw -B verify
+
+  web:
+    name: App web (auditoria + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Instalar exatamente o que está no lockfile
+        run: npm ci
+      - name: Auditoria de dependências (falha com CVE alta ou crítica no que vai para produção)
+        run: npm audit --audit-level=high --omit=dev
+      - name: Build de produção (com Content-Security-Policy)
+        run: npm run build

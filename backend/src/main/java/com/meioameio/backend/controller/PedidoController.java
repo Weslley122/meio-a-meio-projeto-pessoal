@@ -8,6 +8,7 @@ import com.meioameio.backend.security.UsuarioAutenticadoProvider;
 import com.meioameio.backend.service.PedidoService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -37,6 +38,7 @@ public class PedidoController {
     }
 
     @GetMapping("/todos")
+    @PreAuthorize("hasRole('ADMIN')")
     public List<PedidoResponse> todosPedidos() {
         return pedidoService.listarTodos();
     }
@@ -48,7 +50,9 @@ public class PedidoController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public PedidoResponse atualizarStatus(@PathVariable Long id, @Valid @RequestBody StatusUpdateRequest req) {
-        return pedidoService.atualizarStatus(id, req.getStatus());
+        Usuario admin = usuarioAutenticadoProvider.obterUsuarioLogado();
+        return pedidoService.atualizarStatus(id, req.getStatus(), admin);
     }
 }

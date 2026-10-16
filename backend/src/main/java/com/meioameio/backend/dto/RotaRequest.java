@@ -1,13 +1,19 @@
 package com.meioameio.backend.dto;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 
 public class RotaRequest {
 
     @NotNull(message = "Informe a latitude do cliente")
+    @DecimalMin(value = "-90", message = "Latitude inválida")
+    @DecimalMax(value = "90", message = "Latitude inválida")
     private Double latitude;
 
     @NotNull(message = "Informe a longitude do cliente")
+    @DecimalMin(value = "-180", message = "Longitude inválida")
+    @DecimalMax(value = "180", message = "Longitude inválida")
     private Double longitude;
 
     public Double getLatitude() {

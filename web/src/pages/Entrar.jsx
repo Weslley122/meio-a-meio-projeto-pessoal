@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Porta from '../components/Porta';
+import { IconeAlerta } from '../components/icones';
 import { Botao, Campo, Erro } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useAviso } from '../context/AvisoContext';
@@ -66,6 +67,7 @@ export default function Entrar() {
           rotulo="Senha"
           type="password"
           autoComplete="current-password"
+          maxLength={64}
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
           required
@@ -73,6 +75,14 @@ export default function Entrar() {
         <Botao type="submit" disabled={enviando || !telefone || !senha}>
           {enviando ? 'Entrando...' : 'Entrar'}
         </Botao>
+        {/* Engenharia social: o golpe mais comum em app de entrega é "confirmar o pedido"
+            pedindo senha ou código por mensagem. Avisar no lugar onde a senha é digitada. */}
+        <p className="flex items-start gap-2.5 rounded-[10px] bg-laranja-claro px-3.5 py-3 text-sm leading-snug text-tinta">
+          <IconeAlerta className="mt-px size-5 shrink-0 text-laranja-texto" />
+          <span>
+            Ninguém do Meio a Meio pede sua senha por WhatsApp, ligação ou SMS. Se pedirem, é golpe.
+          </span>
+        </p>
       </form>
     </Porta>
   );

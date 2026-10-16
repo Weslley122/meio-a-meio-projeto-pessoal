@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import * as authApi from '../api/auth';
-import { setToken } from '../api/client';
+import { SESSAO_EXPIRADA, setToken } from '../api/client';
 
 const AuthContext = createContext(null);
 
@@ -24,6 +24,16 @@ export function AuthProvider({ children }) {
         setUsuario(null);
       })
       .finally(() => setCarregando(false));
+  }, []);
+
+  // Qualquer chamada logada que voltar 401 (token vencido, adulterado, conta removida) encerra a sessão.
+  useEffect(() => {
+    function encerrar() {
+      setToken(null);
+      setUsuario(null);
+    }
+    window.addEventListener(SESSAO_EXPIRADA, encerrar);
+    return () => window.removeEventListener(SESSAO_EXPIRADA, encerrar);
   }, []);
 
   async function registrar(dados) {
@@ -55,6 +65,8 @@ export function AuthProvider({ children }) {
     usuario,
     carregando,
     logado: Boolean(usuario),
+    // Só decide o que MOSTRAR. Quem decide o que pode é o servidor: mudar isso no navegador
+    // abre a tela do painel vazia, mas toda chamada de admin volta 403.
     isAdmin: usuario?.role === 'ADMIN',
     registrar,
     login,

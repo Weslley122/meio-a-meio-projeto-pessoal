@@ -1,3 +1,5 @@
 data/
 target/
 run.log
+test.log
+logs/

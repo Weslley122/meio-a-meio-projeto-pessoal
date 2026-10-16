@@ -3,6 +3,8 @@
 // Para apontar para outro servidor, defina VITE_API_URL num arquivo .env.
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
+export const SESSAO_EXPIRADA = 'mmc:sessao-expirada';
+
 function getToken() {
   return localStorage.getItem('mmc_token');
 }
@@ -37,7 +39,10 @@ async function request(path, { method = 'GET', body, auth = false } = {}) {
   if (!res.ok) {
     const mensagem = (data && data.mensagem) || 'Não foi possível completar a solicitação.';
     const erro = new Error(mensagem);
-    erro.status = res.status; // quem chamou decide o que fazer com 401/403
+    erro.status = res.status;
+    // Token vencido ou inválido numa chamada logada: avisa o app inteiro para encerrar a sessão
+    // (AuthContext escuta). 403 não entra: é "sem permissão", não "sessão acabou".
+    if (auth && res.status === 401) window.dispatchEvent(new Event(SESSAO_EXPIRADA));
     throw erro;
   }
 

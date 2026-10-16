@@ -13,7 +13,7 @@ function validar(f) {
   const digitos = soDigitos(f.telefone).length;
   if (digitos < 10 || digitos > 11) return 'Digite o telefone com DDD, como (96) 98123-4567.';
   if (!f.endereco.trim()) return 'Digite o endereço de entrega.';
-  if (f.senha.length < 6) return 'A senha precisa ter pelo menos 6 caracteres.';
+  if (f.senha.length < 8 || f.senha.length > 64) return 'A senha precisa ter de 8 a 64 caracteres.';
   if (!f.maiorDeIdade) return 'Confirme que você tem 18 anos ou mais.';
   return '';
 }
@@ -73,9 +73,10 @@ export default function CriarConta() {
         />
         <Campo
           rotulo="Senha"
-          dica="Pelo menos 6 caracteres."
+          dica="De 8 a 64 caracteres. Uma frase curta é mais forte que uma palavra."
           type="password"
           autoComplete="new-password"
+          maxLength={64}
           value={f.senha}
           onChange={muda('senha')}
         />

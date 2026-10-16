@@ -4,6 +4,8 @@ import com.meioameio.backend.model.Produto;
 import com.meioameio.backend.model.Usuario;
 import com.meioameio.backend.repository.ProdutoRepository;
 import com.meioameio.backend.repository.UsuarioRepository;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -23,19 +25,25 @@ public class MeioAMeioBackendApplication {
 
     /**
      * Popula o banco com o usuário admin e o catálogo de produtos na primeira execução.
-     * Login do admin (painel do Carlinho): telefone 99999999999 / senha admin123
+     * Login do admin (painel do Carlinho): telefone 99999999999 e a senha de ADMIN_SENHA.
+     * Sem a variável, em desenvolvimento a senha é admin123; no perfil "prod" a variável é obrigatória.
      */
     @Bean
     CommandLineRunner seedDados(UsuarioRepository usuarioRepository,
                                 ProdutoRepository produtoRepository,
-                                PasswordEncoder passwordEncoder) {
+                                PasswordEncoder passwordEncoder,
+                                @Value("${app.admin.senha}") String senhaAdmin) {
         return args -> {
+            if ("admin123".equals(senhaAdmin)) {
+                LoggerFactory.getLogger("SEGURANCA").warn(
+                        "evento=senha_padrao_admin aviso=\"senha de desenvolvimento em uso; defina ADMIN_SENHA fora da sua máquina\"");
+            }
             if (usuarioRepository.findByTelefone("99999999999").isEmpty()) {
                 Usuario admin = new Usuario();
                 admin.setNome("Carlinho (Admin)");
                 admin.setTelefone("99999999999");
                 admin.setEndereco("Meio a Meio do Carlinho");
-                admin.setSenha(passwordEncoder.encode("admin123"));
+                admin.setSenha(passwordEncoder.encode(senhaAdmin));
                 admin.setRole("ADMIN");
                 usuarioRepository.save(admin);
             }
