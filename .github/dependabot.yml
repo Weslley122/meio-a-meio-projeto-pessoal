@@ -1,4 +1,7 @@
 # Dependabot: abre PR quando sai versão nova ou correção de CVE nas dependências.
+# Versões MAIORES de framework (Spring Boot 4, React 19, React Router 7) mudam API e pedem migração
+# planejada, não um merge automático: ficam de fora daqui. Alertas de segurança (Dependabot security
+# updates) continuam chegando para elas normalmente.
 version: 2
 updates:
   - package-ecosystem: maven
@@ -6,14 +9,30 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: org.springframework.boot:spring-boot-starter-parent
+        update-types: [version-update:semver-major]
+      # jjwt ainda é 0.x: subir o "minor" (0.11 -> 0.12+) remove métodos que o JwtUtil usa.
+      - dependency-name: io.jsonwebtoken:*
+        update-types: [version-update:semver-major, version-update:semver-minor]
   - package-ecosystem: npm
     directory: /web
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
     groups:
+      # react e react-dom só funcionam na mesma versão: um PR para os dois.
+      react:
+        patterns: [react, react-dom]
       dev:
         dependency-type: development
+    ignore:
+      - dependency-name: react
+        update-types: [version-update:semver-major]
+      - dependency-name: react-dom
+        update-types: [version-update:semver-major]
+      - dependency-name: react-router-dom
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule:
