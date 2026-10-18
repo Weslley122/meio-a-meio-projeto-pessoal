@@ -247,6 +247,27 @@ class SegurancaTest {
         assertThat(corpo).doesNotContain("Jackson", "Exception", "com.meioameio", "\tat ");
     }
 
+    @Test
+    @DisplayName("Corpo gigante é recusado com 413, não lido inteiro na memória")
+    void corpoGiganteRecusado() throws Exception {
+        String enderecoEnorme = "A".repeat(200_000);
+        String corpo = """
+                {"nome":"X","telefone":"%s","endereco":"%s","senha":"senhaforte1","maiorDeIdade":true}
+                """.formatted(novoTelefone(), enderecoEnorme);
+        mvc.perform(post("/api/auth/registro").contentType(MediaType.APPLICATION_JSON).content(corpo))
+                .andExpect(status().isPayloadTooLarge());
+    }
+
+    @Test
+    @DisplayName("Corpo dentro do limite passa normalmente")
+    void corpoNormalPassa() throws Exception {
+        mvc.perform(post("/api/auth/registro").contentType(MediaType.APPLICATION_JSON).content("""
+                        {"nome":"Normal","telefone":"%s","endereco":"Rua das Flores, 10, Centro",
+                         "senha":"senhaforte1","maiorDeIdade":true}
+                        """.formatted(novoTelefone())))
+                .andExpect(status().isOk());
+    }
+
     // ---------- dados e cabeçalhos ----------
 
     @Test

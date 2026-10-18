@@ -55,7 +55,7 @@ Testes (incluindo os de segurança): `cd backend && ./mvnw test`, ou `backend/te
   tempos em tempos, pausa com a aba escondida e para quando o pedido é entregue. Para o volume de
   uma loja de bairro é suficiente e bem mais simples de manter.
 - **JWT com o id do usuário**, não o telefone: trocar o telefone no perfil não derruba a sessão.
-- **Segurança testada, não só configurada.** 21 testes automáticos tentam ataques reais (token
+- **Segurança testada, não só configurada.** 23 testes automáticos tentam ataques reais (token
   forjado, SQL injection, força bruta, IDOR, virar admin pelo cadastro, preço adulterado) e rodam no
   CI a cada push, junto com CodeQL, `npm audit` e Dependabot. Endereço cifrado com AES-256-GCM,
   senha com BCrypt, logs de segurança prontos para SIEM. Um pentest manual achou uma falha (token de

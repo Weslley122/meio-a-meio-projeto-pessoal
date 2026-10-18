@@ -2,6 +2,7 @@ package com.meioameio.backend.exception;
 
 import com.meioameio.backend.dto.ErroResponse;
 import com.meioameio.backend.security.Auditoria;
+import com.meioameio.backend.security.LimiteDeTamanhoFilter;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -70,9 +71,21 @@ public class GlobalExceptionHandler {
         return erro(HttpStatus.BAD_REQUEST, mensagem);
     }
 
+    /** Corpo acima do teto (LimiteDeTamanhoFilter): pode vir direto ou embrulhado pelo Jackson. */
+    @ExceptionHandler(LimiteDeTamanhoFilter.CorpoGrandeDemaisException.class)
+    public ResponseEntity<ErroResponse> tratarCorpoGrande(Exception ex) {
+        return erro(HttpStatus.PAYLOAD_TOO_LARGE, "Requisição grande demais.");
+    }
+
     /** JSON quebrado ou com tipo errado: não devolvemos o erro do parser (ele revela classes internas). */
     @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
     public ResponseEntity<ErroResponse> tratarCorpoInvalido(Exception ex) {
+        // Se por baixo foi corpo grande demais (o Jackson lia o stream quando o teto estourou), é 413.
+        for (Throwable causa = ex; causa != null; causa = causa.getCause()) {
+            if (causa instanceof LimiteDeTamanhoFilter.CorpoGrandeDemaisException) {
+                return erro(HttpStatus.PAYLOAD_TOO_LARGE, "Requisição grande demais.");
+            }
+        }
         return erro(HttpStatus.BAD_REQUEST, "Requisição em formato inválido.");
     }
 

@@ -41,14 +41,17 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final LimiteDeRequisicoesFilter limiteFilter;
+    private final LimiteDeTamanhoFilter tamanhoFilter;
     private final CorsConfig corsConfig;
     private final Auditoria auditoria;
     private final ObjectMapper objectMapper;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, LimiteDeRequisicoesFilter limiteFilter, CorsConfig corsConfig,
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter, LimiteDeRequisicoesFilter limiteFilter,
+                          LimiteDeTamanhoFilter tamanhoFilter, CorsConfig corsConfig,
                           Auditoria auditoria, ObjectMapper objectMapper) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.limiteFilter = limiteFilter;
+        this.tamanhoFilter = tamanhoFilter;
         this.corsConfig = corsConfig;
         this.auditoria = auditoria;
         this.objectMapper = objectMapper;
@@ -103,6 +106,8 @@ public class SecurityConfig {
                         // Menor privilégio: tudo que não foi liberado acima exige login.
                         .anyRequest().authenticated()
                 )
+                // Teto de tamanho primeiro: barra o corpo gigante antes de qualquer outro filtro lê-lo.
+                .addFilterBefore(tamanhoFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(limiteFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

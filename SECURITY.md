@@ -5,9 +5,9 @@ verificado. Itens marcados como *processo* não são código: são práticas que
 sistema, e estão aqui para mostrar que foram pensados, não para fingir que um app resolve sozinho.
 
 - Testes automáticos de ataque: [`backend/src/test/java/.../SegurancaTest.java`](backend/src/test/java/com/meioameio/backend/SegurancaTest.java)
-  (17 casos) e [`JwtUtilTest.java`](backend/src/test/java/com/meioameio/backend/security/JwtUtilTest.java)
+  (19 casos) e [`JwtUtilTest.java`](backend/src/test/java/com/meioameio/backend/security/JwtUtilTest.java)
   (4 casos), rodam no CI a cada push.
-- Pentest manual na API rodando: [resultado abaixo](#pentest-manual), com 1 falha encontrada e corrigida.
+- Pentest manual na API rodando: [resultado abaixo](#pentest-manual), com 2 falhas encontradas e corrigidas (token de admin forjável; corpo sem teto de tamanho).
 - Pipeline: [`.github/workflows/ci.yml`](.github/workflows/ci.yml), [`codeql.yml`](.github/workflows/codeql.yml)
   e [`dependabot.yml`](.github/dependabot.yml).
 
@@ -125,7 +125,7 @@ O host do app web deve mandar `frame-ancestors 'none'` como cabeçalho (em meta 
 | API1 Autorização por objeto (IDOR) | 404 para pedido de outro usuário |
 | API2 Autenticação quebrada | JWT validado, bloqueio por força bruta, mensagem única |
 | API3 Propriedades expostas/atribuição em massa | DTOs de entrada e saída; `role` e preço não entram pelo JSON |
-| API4 Consumo de recursos | Limites de tamanho nos DTOs (máx. 30 itens, 99 unidades), 429 nas rotas de login |
+| API4 Consumo de recursos | Limites de tamanho nos DTOs (máx. 30 itens, 99 unidades), 429 nas rotas de login, teto de 64 KB no corpo da requisição |
 | API5 Autorização por função | Rotas de admin com regra por rota + `@PreAuthorize` |
 | API8 Má configuração | Erros sem stack trace nem mensagem técnica (500 devolve só uma referência), cabeçalhos de segurança |
 
@@ -217,6 +217,15 @@ não auditoria independente.
 | **Correção** | Sem `JWT_SECRET`, a API sorteia 64 bytes aleatórios a cada subida; no perfil `prod`, falta da variável derruba a subida. Teste de regressão: `JwtUtilTest.chaveAntigaDoRepositorioNaoVale`. Reteste na API rodando: o mesmo token agora recebe **401**. |
 | **Lição** | "Valor padrão só para desenvolvimento" não protege nada quando o repositório é público: o padrão vira a chave de quem esquecer de configurar. |
 
+### Achado 2 — teste de carga (corrigido)
+
+| | |
+|---|---|
+| **Falha** | Sem teto de tamanho de corpo. Um JSON de 12 MB era lido e desserializado inteiro na memória antes de a validação `@Size` recusar o campo. Nas rotas abertas (login e cadastro), isso permitia gastar memória, CPU e rede do servidor só mandando corpos enormes (DoS, OWASP API4). |
+| **Gravidade** | Média: não vaza dado nem dá acesso, mas um atacante com pouca banda derruba a loja. |
+| **Prova** | `POST /api/auth/registro` com endereço de 12 MB → **400** de validação (ou seja, o corpo foi lido por completo), em 459 ms. |
+| **Correção** | `LimiteDeTamanhoFilter`: corpo acima de 64 KB (configurável) é recusado com **413**, pelo `Content-Length` e também contando os bytes lidos de verdade (cobre requisição sem `Content-Length`). Testes: `corpoGiganteRecusado` e `corpoNormalPassa`. |
+
 ### O que foi tentado e barrado
 
 | Ataque | Resposta |
@@ -240,6 +249,12 @@ não auditoria independente.
 | XSS armazenado: nome `<img src=x onerror=alert(1)>` | A API aceita como texto; o painel do dono mostra o texto literal, nenhum elemento `<img>` criado |
 | Força bruta: 5 senhas erradas, depois a certa | 401 ×5, depois **429** com `Retry-After: 900` |
 | Enxurrada: 25 logins seguidos do mesmo IP | **429** a partir da 20ª chamada no minuto, `Retry-After: 60`; o catálogo continuou respondendo |
+| **Carga:** 60 logins simultâneos, mesmo IP | 20 passaram (401 por senha errada), 40 barrados com **429** `Retry-After: 60` — o limite por IP segura sob concorrência, não só em fila |
+| **Carga:** 40 pedidos simultâneos do mesmo usuário | 40 × 200, 40 IDs únicos, todos com total certo (R$ 29,00); sem ID repetido nem total corrompido |
+| **Carga:** 5 cadastros simultâneos com o mesmo telefone | 1 × 200 e 4 × 409: o índice único do banco impede conta duplicada mesmo na corrida |
+| Campos de 1 MB (nome, endereço, senha) | 400 na validação de tamanho |
+| JSON aninhado 10 mil níveis | 400 (o parser tem limite de profundidade; não estoura a pilha) |
+| Campos extras (`admin`, `saldo`, `__proto__`) | Ignorados; a conta sai CLIENTE |
 | Cabeçalhos da API | `Content-Security-Policy`, `X-Frame-Options: DENY`, `nosniff`, `no-referrer`, `Permissions-Policy`, `Cache-Control: no-store`; sem `Server` nem `X-Powered-By` |
 
 Todos os eventos acima apareceram em `logs/seguranca.log` (24 `login_falha`, 13 `limite_excedido`,
