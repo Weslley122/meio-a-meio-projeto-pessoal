@@ -7,6 +7,15 @@ REM  - Roda o Maven Wrapper (baixa o Maven na primeira vez)
 REM  - Mostra tudo na tela e salva uma copia em run.log
 REM ============================================================
 cd /d "%~dp0"
+REM Se a pasta .mvn sumir (ex.: pasta apagada e restaurada), recria a configuracao do Maven Wrapper.
+if not exist ".mvn\wrapper\maven-wrapper.properties" (
+  mkdir ".mvn\wrapper" 2>nul
+  > ".mvn\wrapper\maven-wrapper.properties" (
+    echo wrapperVersion=3.3.4
+    echo distributionType=only-script
+    echo distributionUrl=https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.11/apache-maven-3.9.11-bin.zip
+  )
+)
 title Meio a Meio - back-end
 
 set "JAVA_HOME="
