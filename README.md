@@ -55,14 +55,16 @@ Testes (incluindo os de segurança): `cd backend && ./mvnw test`, ou `backend/te
   tempos em tempos, pausa com a aba escondida e para quando o pedido é entregue. Para o volume de
   uma loja de bairro é suficiente e bem mais simples de manter.
 - **JWT com o id do usuário**, não o telefone: trocar o telefone no perfil não derruba a sessão.
-- **Segurança testada, não só configurada.** 17 testes automáticos tentam ataques reais (token
+- **Segurança testada, não só configurada.** 21 testes automáticos tentam ataques reais (token
   forjado, SQL injection, força bruta, IDOR, virar admin pelo cadastro, preço adulterado) e rodam no
   CI a cada push, junto com CodeQL, `npm audit` e Dependabot. Endereço cifrado com AES-256-GCM,
-  senha com BCrypt, logs de segurança prontos para SIEM. O que existe, onde está e o que falta:
+  senha com BCrypt, logs de segurança prontos para SIEM. Um pentest manual achou uma falha (token de
+  admin forjável com a chave de desenvolvimento pública), que foi corrigida e virou teste de
+  regressão. O que existe, onde está e o que falta:
   [`SECURITY.md`](SECURITY.md).
 - **Segredos por variável de ambiente** (`JWT_SECRET`, `APP_CRIPTO_CHAVE`, `ADMIN_SENHA`, `DB_*`,
-  `CORS_ORIGIN`): valores padrão só para desenvolvimento; no perfil `prod` não há padrão e a API não
-  sobe se faltar algum.
+  `CORS_ORIGIN`). Sem `JWT_SECRET` a chave é sorteada a cada subida; no perfil `prod` não há padrão
+  nenhum e a API não sobe se faltar algum.
 - **Acessibilidade:** texto branco no laranja da marca dava 2,9:1 de contraste, então os botões usam
   texto preto (6,4:1); foco visível no teclado; animações desligadas para quem pede menos movimento.
 - **Ícones e ilustrações próprios** em SVG, sem fotos de marcas (a loja não tem direito de uso).

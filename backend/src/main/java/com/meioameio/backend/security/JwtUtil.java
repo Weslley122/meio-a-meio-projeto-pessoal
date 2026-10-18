@@ -4,11 +4,14 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.security.SecureRandom;
 import java.util.Date;
 
 /**
@@ -25,13 +28,33 @@ public class JwtUtil {
 
     static final String EMISSOR = "meio-a-meio-api";
 
+    private static final Logger LOG = LoggerFactory.getLogger("SEGURANCA");
+
     private final Key chave;
     private final long expiracaoMs;
 
-    public JwtUtil(@Value("${app.jwt.secret}") String segredo,
-                   @Value("${app.jwt.expiration-ms}") long expiracaoMs) {
-        // hmacShaKeyFor recusa chave com menos de 256 bits: segredo curto derruba a API na subida.
-        this.chave = Keys.hmacShaKeyFor(segredo.getBytes(StandardCharsets.UTF_8));
+    /**
+     * Sem JWT_SECRET, a API sorteia uma chave nova a cada vez que sobe, em vez de usar uma chave fixa
+     * escrita no repositório. Achado do pentest: com a chave de desenvolvimento pública no GitHub,
+     * qualquer pessoa conseguia assinar um token de ADMIN válido para uma API que subisse sem a
+     * variável. Efeito colateral aceitável em desenvolvimento: reiniciar a API desloga todo mundo.
+     * No perfil "prod", app.jwt.exigir-segredo=true: sem JWT_SECRET a API nem sobe.
+     */
+    public JwtUtil(@Value("${app.jwt.secret:}") String segredo,
+                   @Value("${app.jwt.expiration-ms}") long expiracaoMs,
+                   @Value("${app.jwt.exigir-segredo:false}") boolean exigirSegredo) {
+        if (segredo == null || segredo.isBlank()) {
+            if (exigirSegredo) {
+                throw new IllegalStateException("JWT_SECRET não definida: obrigatória neste ambiente.");
+            }
+            byte[] aleatoria = new byte[64];
+            new SecureRandom().nextBytes(aleatoria);
+            this.chave = Keys.hmacShaKeyFor(aleatoria);
+            LOG.warn("evento=jwt_chave_temporaria aviso=\"JWT_SECRET ausente; chave aleatória gerada, sessões caem ao reiniciar\"");
+        } else {
+            // hmacShaKeyFor recusa chave com menos de 256 bits: segredo curto derruba a API na subida.
+            this.chave = Keys.hmacShaKeyFor(segredo.getBytes(StandardCharsets.UTF_8));
+        }
         this.expiracaoMs = expiracaoMs;
     }
 

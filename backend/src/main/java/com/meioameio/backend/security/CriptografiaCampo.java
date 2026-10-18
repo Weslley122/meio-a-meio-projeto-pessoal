@@ -42,7 +42,15 @@ public class CriptografiaCampo implements AttributeConverter<String, String> {
     private final SecretKey chave;
     private final SecureRandom aleatorio = new SecureRandom();
 
-    public CriptografiaCampo(@Value("${app.cripto.chave}") String chaveBase64) {
+    public CriptografiaCampo(@Value("${app.cripto.chave}") String chaveBase64,
+                             @Value("${APP_CRIPTO_CHAVE:}") String chaveDoAmbiente) {
+        // A chave padrão de desenvolvimento está no repositório público: serve para rodar local, nunca
+        // para dado real. Diferente do JWT, não dá para sortear uma nova a cada subida (os endereços já
+        // gravados ficariam ilegíveis), então o caminho é avisar alto no log.
+        if (chaveDoAmbiente == null || chaveDoAmbiente.isBlank()) {
+            org.slf4j.LoggerFactory.getLogger("SEGURANCA").warn(
+                    "evento=cripto_chave_padrao aviso=\"APP_CRIPTO_CHAVE ausente; chave pública de desenvolvimento em uso\"");
+        }
         byte[] bytes = Base64.getDecoder().decode(chaveBase64);
         if (bytes.length != 32) {
             throw new IllegalStateException("app.cripto.chave precisa ter 32 bytes em Base64 (AES-256).");

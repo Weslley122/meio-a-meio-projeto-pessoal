@@ -5,7 +5,9 @@ verificado. Itens marcados como *processo* não são código: são práticas que
 sistema, e estão aqui para mostrar que foram pensados, não para fingir que um app resolve sozinho.
 
 - Testes automáticos de ataque: [`backend/src/test/java/.../SegurancaTest.java`](backend/src/test/java/com/meioameio/backend/SegurancaTest.java)
-  (17 casos, rodam no CI a cada push).
+  (17 casos) e [`JwtUtilTest.java`](backend/src/test/java/com/meioameio/backend/security/JwtUtilTest.java)
+  (4 casos), rodam no CI a cada push.
+- Pentest manual na API rodando: [resultado abaixo](#pentest-manual), com 1 falha encontrada e corrigida.
 - Pipeline: [`.github/workflows/ci.yml`](.github/workflows/ci.yml), [`codeql.yml`](.github/workflows/codeql.yml)
   e [`dependabot.yml`](.github/dependabot.yml).
 
@@ -48,7 +50,8 @@ app sem conteúdo gerado por terceiros.
 
 | O que existe | Onde |
 |---|---|
-| JWT HS256 com emissor obrigatório (`iss`) e validade de 12 h. Token com `alg: none` ou outra chave é recusado. | `security/JwtUtil.java` |
+| JWT HS256 com emissor obrigatório (`iss`) e validade de 12 h. Token com `alg: none`, outra chave, sem emissor ou vencido é recusado. | `security/JwtUtil.java` |
+| Sem `JWT_SECRET`, a chave é sorteada a cada subida (nunca uma chave fixa no repositório); no perfil `prod`, a API não sobe sem ela. | `JwtUtil.java`, `application-prod.properties` |
 | O papel (CLIENTE/ADMIN) é lido **do banco a cada requisição**, não do token: rebaixar um admin vale na hora. | `security/JwtAuthFilter.java` |
 | Autorização em duas camadas: por rota e com `@PreAuthorize` nos métodos de admin. | `SecurityConfig.java`, `PedidoController`, `LojaController` |
 | IDOR: pedido de outra pessoa responde 404 (nem confirma que existe). | `PedidoService.buscarPorId` |
@@ -157,13 +160,15 @@ mesmo IP em 5 min; qualquer `acesso_negado` em rota de admin; `status_alterado` 
 | Segredos fora do código | `application-prod.properties` sem valor padrão: faltou variável, a API não sobe |
 
 **Limites:** não há SCA no Maven além do Dependabot (próximo passo: OWASP Dependency-Check ou
-`trivy fs`), nem varredura de segredos no histórico (próximo: `gitleaks` no CI). A chave de
-desenvolvimento e a senha `admin123` estão no repositório **de propósito**, só para rodar local; a API
-avisa no log quando sobe com elas.
+`trivy fs`), nem varredura de segredos no histórico (próximo: `gitleaks` no CI). A chave de cifra
+de desenvolvimento e a senha `admin123` estão no repositório **de propósito**, só para rodar local; a
+API avisa no log (`cripto_chave_padrao`, `senha_padrao_admin`) quando sobe com elas. A chave do JWT
+saiu do repositório depois do pentest (ver abaixo); ela continua no histórico do Git, mas não vale
+mais em lugar nenhum.
 
 ### Pentest
 
-Além dos 17 testes automáticos, a API rodando foi atacada manualmente. Resultado na seção
+Além dos testes automáticos, a API rodando foi atacada manualmente. Resultado na seção
 [Pentest manual](#pentest-manual) abaixo.
 
 *Processo:* um pentest de verdade é feito por outra pessoa, com escopo e autorização por escrito, e
@@ -198,7 +203,55 @@ por antivírus (ClamAV) antes de abrir.
 
 ## Pentest manual
 
-_Em andamento._
+**Quando e como:** 18/10/2026, API e app web rodando localmente (Spring Boot 3.5.16, Vite 6.4.4),
+ataques disparados do navegador com `fetch` e `crypto.subtle` (para assinar tokens). Autoverificação,
+não auditoria independente.
+
+### Achado (corrigido)
+
+| | |
+|---|---|
+| **Falha** | Token de ADMIN forjável com a chave de desenvolvimento do JWT, que estava escrita em `application.properties` no repositório público. Qualquer API que subisse sem `JWT_SECRET` aceitava esse token. |
+| **Gravidade** | Alta se acontecesse em produção (controle total do painel). O perfil `prod` já exigia `JWT_SECRET`, então o risco real era alguém publicar com o perfil padrão. |
+| **Prova** | Token `{"iss":"meio-a-meio-api","sub":"1","role":"ADMIN"}` assinado com HS256 e a chave pública → `GET /api/pedidos/todos` respondeu **200**. |
+| **Correção** | Sem `JWT_SECRET`, a API sorteia 64 bytes aleatórios a cada subida; no perfil `prod`, falta da variável derruba a subida. Teste de regressão: `JwtUtilTest.chaveAntigaDoRepositorioNaoVale`. |
+| **Lição** | "Valor padrão só para desenvolvimento" não protege nada quando o repositório é público: o padrão vira a chave de quem esquecer de configurar. |
+
+### O que foi tentado e barrado
+
+| Ataque | Resposta |
+|---|---|
+| Rota protegida sem token | 401 em JSON, sem detalhe |
+| Token `alg: none`, token lixo, token com chave inventada | 401 |
+| Token válido sem emissor, vencido, ou de usuário inexistente | 401 |
+| Cadastro com `"role":"ADMIN"` e `"id":1` | Conta criada como CLIENTE com id novo; `/pedidos/todos` → 403 |
+| Cliente mudando status de pedido ou localização da loja | 403 (e `acesso_negado` no log) |
+| IDOR: abrir pedido de outro cliente | 404, igual a pedido inexistente |
+| Pedido com `preco: 0.01`, `total: 0.01`, `taxaEntrega: 0`, `status: 3` | Ignorados: subtotal R$ 9,00, taxa R$ 20,00, total R$ 29,00, status 0 |
+| Quantidade −5 ou 100.000, 500 itens, pagamento `bitcoin` | 400 |
+| Produto inexistente | 404 |
+| `GET /api/pedidos/1 OR 1=1` | 400 "Requisição em formato inválido." |
+| SQL injection no login (`' OR '1'='1' --`) | 401 com a mensagem genérica |
+| Enumeração de contas: senha errada × telefone inexistente | Mesma mensagem, 271 ms × 268 ms |
+| Admin pulando etapa (1 → 3), voltando (1 → 0), status 99 | 400 |
+| JSON quebrado, tipo errado no corpo | 400 sem nome de classe nem stack trace |
+| Rota inexistente | 401 sem login, 404 com login (não revela o que existe para anônimo) |
+| `/api/actuator/env`, `/api/h2-console` | 401 (o Actuator nem está instalado; o console do H2 está desligado) |
+| XSS armazenado: nome `<img src=x onerror=alert(1)>` | A API aceita como texto; o painel do dono mostra o texto literal, nenhum elemento `<img>` criado |
+| Força bruta: 5 senhas erradas, depois a certa | 401 ×5, depois **429** com `Retry-After: 900` |
+| Enxurrada: 25 logins seguidos do mesmo IP | **429** a partir da 20ª chamada no minuto, `Retry-After: 60`; o catálogo continuou respondendo |
+| Cabeçalhos da API | `Content-Security-Policy`, `X-Frame-Options: DENY`, `nosniff`, `no-referrer`, `Permissions-Policy`, `Cache-Control: no-store`; sem `Server` nem `X-Powered-By` |
+
+Todos os eventos acima apareceram em `logs/seguranca.log` (24 `login_falha`, 13 `limite_excedido`,
+12 `nao_autenticado`, 3 `acesso_negado`, 2 `login_bloqueado`), com telefone mascarado e nenhuma senha
+ou token.
+
+### Observações sem correção
+
+- **Senha padrão do admin (`admin123`) funciona localmente.** Esperado e documentado; a API avisa no
+  log, e no perfil `prod` a senha é obrigatória por variável.
+- **Lockout pode ser usado contra a vítima:** 5 senhas erradas travam o login dela por 15 min (ver
+  limites em Autenticação).
 
 ## Como reportar uma vulnerabilidade
 
