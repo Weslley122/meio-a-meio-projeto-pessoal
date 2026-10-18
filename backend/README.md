@@ -24,13 +24,18 @@ A primeira execução demora alguns minutos (baixa o Maven e as bibliotecas). A 
 Na primeira execução o app cria sozinho:
 - as tabelas;
 - os 30 produtos do catálogo;
-- o administrador: **telefone `99999999999`, senha `admin123`** (é com esse login que aparece o Painel do Carlinho).
+- o administrador: **telefone `99999999999`, senha `admin123`** (é com esse login que aparece o Painel do Carlinho). A senha vem de `ADMIN_SENHA`; `admin123` é só o padrão local.
 
 ## Banco de dados
 
 **Padrão: H2.** É um banco em arquivo, guardado na pasta `data/` deste projeto. Não precisa
 instalar nada, e os dados continuam lá entre uma execução e outra. Para zerar tudo, pare o
 servidor e apague a pasta `data/`.
+
+**Testes:** `testar-backend.cmd` (ou `.\mvnw.cmd test`). Usam um banco H2 em memória, separado do seu.
+
+**Produção:** perfil `prod` (`SPRING_PROFILES_ACTIVE=prod`). Exige `JWT_SECRET`, `APP_CRIPTO_CHAVE`,
+`ADMIN_SENHA`, `CORS_ORIGIN`, `DB_URL`, `DB_USER` e `DB_PASSWORD`. Detalhes em [`../SECURITY.md`](../SECURITY.md).
 
 **MySQL (opcional).** Com o MySQL 8 instalado e rodando:
 1. Ajuste usuário e senha em `src/main/resources/application-mysql.properties`.

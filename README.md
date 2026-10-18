@@ -42,7 +42,10 @@ Abra `http://localhost:5173`. No Windows também dá para usar os atalhos `backe
 e `web/rodar-web.cmd`.
 
 Login do dono para testar o painel: telefone `99999999999`, senha `admin123`
-(criado automaticamente na primeira execução, junto com os 30 produtos).
+(criado automaticamente na primeira execução, junto com os 30 produtos). Essa senha só vale no
+ambiente local: em produção ela vem de `ADMIN_SENHA` e a API avisa no log se subir com a padrão.
+
+Testes (incluindo os de segurança): `cd backend && ./mvnw test`, ou `backend/testar-backend.cmd` no Windows.
 
 ## Decisões de projeto
 
@@ -52,8 +55,14 @@ Login do dono para testar o painel: telefone `99999999999`, senha `admin123`
   tempos em tempos, pausa com a aba escondida e para quando o pedido é entregue. Para o volume de
   uma loja de bairro é suficiente e bem mais simples de manter.
 - **JWT com o id do usuário**, não o telefone: trocar o telefone no perfil não derruba a sessão.
-- **Segredos por variável de ambiente** (`JWT_SECRET`, `DB_USER`, `DB_PASSWORD`, `CORS_ORIGIN`),
-  com valores padrão só para desenvolvimento.
+- **Segurança testada, não só configurada.** 17 testes automáticos tentam ataques reais (token
+  forjado, SQL injection, força bruta, IDOR, virar admin pelo cadastro, preço adulterado) e rodam no
+  CI a cada push, junto com CodeQL, `npm audit` e Dependabot. Endereço cifrado com AES-256-GCM,
+  senha com BCrypt, logs de segurança prontos para SIEM. O que existe, onde está e o que falta:
+  [`SECURITY.md`](SECURITY.md).
+- **Segredos por variável de ambiente** (`JWT_SECRET`, `APP_CRIPTO_CHAVE`, `ADMIN_SENHA`, `DB_*`,
+  `CORS_ORIGIN`): valores padrão só para desenvolvimento; no perfil `prod` não há padrão e a API não
+  sobe se faltar algum.
 - **Acessibilidade:** texto branco no laranja da marca dava 2,9:1 de contraste, então os botões usam
   texto preto (6,4:1); foco visível no teclado; animações desligadas para quem pede menos movimento.
 - **Ícones e ilustrações próprios** em SVG, sem fotos de marcas (a loja não tem direito de uso).
@@ -64,6 +73,7 @@ Mais detalhes em [`web/README.md`](web/README.md) e [`backend/README.md`](backen
 
 ## Próximos passos
 
-- Testes automatizados: regra de frete e serviços no back-end (JUnit) e fluxo de compra no front (Playwright).
+- Mais testes: regra de frete e serviços no back-end (JUnit) e fluxo de compra no front (Playwright).
+- Refresh token com revogação e segundo fator para a conta do dono (ver [`SECURITY.md`](SECURITY.md)).
 - Troco para pagamento em dinheiro.
 - Notificação no navegador quando o pedido muda de etapa.
