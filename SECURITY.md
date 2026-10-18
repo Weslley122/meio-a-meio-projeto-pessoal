@@ -214,7 +214,7 @@ não auditoria independente.
 | **Falha** | Token de ADMIN forjável com a chave de desenvolvimento do JWT, que estava escrita em `application.properties` no repositório público. Qualquer API que subisse sem `JWT_SECRET` aceitava esse token. |
 | **Gravidade** | Alta se acontecesse em produção (controle total do painel). O perfil `prod` já exigia `JWT_SECRET`, então o risco real era alguém publicar com o perfil padrão. |
 | **Prova** | Token `{"iss":"meio-a-meio-api","sub":"1","role":"ADMIN"}` assinado com HS256 e a chave pública → `GET /api/pedidos/todos` respondeu **200**. |
-| **Correção** | Sem `JWT_SECRET`, a API sorteia 64 bytes aleatórios a cada subida; no perfil `prod`, falta da variável derruba a subida. Teste de regressão: `JwtUtilTest.chaveAntigaDoRepositorioNaoVale`. |
+| **Correção** | Sem `JWT_SECRET`, a API sorteia 64 bytes aleatórios a cada subida; no perfil `prod`, falta da variável derruba a subida. Teste de regressão: `JwtUtilTest.chaveAntigaDoRepositorioNaoVale`. Reteste na API rodando: o mesmo token agora recebe **401**. |
 | **Lição** | "Valor padrão só para desenvolvimento" não protege nada quando o repositório é público: o padrão vira a chave de quem esquecer de configurar. |
 
 ### O que foi tentado e barrado

@@ -36,6 +36,7 @@ import java.util.Base64;
 public class CriptografiaCampo implements AttributeConverter<String, String> {
 
     private static final String PREFIXO = "gcm1:";
+    private static final java.util.concurrent.atomic.AtomicBoolean AVISOU = new java.util.concurrent.atomic.AtomicBoolean();
     private static final int TAMANHO_IV = 12;
     private static final int TAMANHO_TAG_BITS = 128;
 
@@ -47,7 +48,8 @@ public class CriptografiaCampo implements AttributeConverter<String, String> {
         // A chave padrão de desenvolvimento está no repositório público: serve para rodar local, nunca
         // para dado real. Diferente do JWT, não dá para sortear uma nova a cada subida (os endereços já
         // gravados ficariam ilegíveis), então o caminho é avisar alto no log.
-        if (chaveDoAmbiente == null || chaveDoAmbiente.isBlank()) {
+        // O Hibernate cria a própria instância do conversor, além do bean do Spring: avisa uma vez só.
+        if ((chaveDoAmbiente == null || chaveDoAmbiente.isBlank()) && AVISOU.compareAndSet(false, true)) {
             org.slf4j.LoggerFactory.getLogger("SEGURANCA").warn(
                     "evento=cripto_chave_padrao aviso=\"APP_CRIPTO_CHAVE ausente; chave pública de desenvolvimento em uso\"");
         }
