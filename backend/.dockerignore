@@ -1,0 +1,9 @@
+target/
+data/
+logs/
+run.log
+test.log
+*.log
+.git/
+.idea/
+.vscode/
