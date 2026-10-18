@@ -5,6 +5,7 @@ import com.meioameio.backend.dto.ErroResponse;
 import com.meioameio.backend.security.Auditoria;
 import com.meioameio.backend.security.JwtAuthFilter;
 import com.meioameio.backend.security.LimiteDeRequisicoesFilter;
+import com.meioameio.backend.security.LimiteDeTamanhoFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
