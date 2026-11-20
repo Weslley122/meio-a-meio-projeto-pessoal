@@ -45,7 +45,20 @@ Login do dono para testar o painel: telefone `99999999999`, senha `admin123`
 (criado automaticamente na primeira execução, junto com os 30 produtos). Essa senha só vale no
 ambiente local: em produção ela vem de `ADMIN_SENHA` e a API avisa no log se subir com a padrão.
 
-Testes (incluindo os de segurança): `cd backend && ./mvnw test`, ou `backend/testar-backend.cmd` no Windows.
+**Ou com Docker (API + MySQL, sem instalar Java nem MySQL):**
+
+```bash
+cp .env.example .env          # e troque as senhas
+docker compose up --build     # API em http://localhost:8080
+```
+
+Testes: `cd backend && ./mvnw test`, ou `backend/testar-backend.cmd` no Windows. São três grupos:
+
+- `PedidoServiceTest`: unidade, com Mockito. Cobre a regra de frete nos valores de fronteira, a
+  máquina de status do pedido e a proteção contra IDOR.
+- `PedidoRepositoryTest`: integração JPA/Hibernate em H2. Cobre o cascade dos itens, a consulta
+  derivada do nome do método e o endereço cifrado pelo `@Convert`.
+- `SegurancaTest`: ataques reais contra a API (ver abaixo).
 
 ## Decisões de projeto
 
@@ -75,7 +88,7 @@ Mais detalhes em [`web/README.md`](web/README.md) e [`backend/README.md`](backen
 
 ## Próximos passos
 
-- Mais testes: regra de frete e serviços no back-end (JUnit) e fluxo de compra no front (Playwright).
+- Testes do fluxo de compra no front (Playwright).
 - Refresh token com revogação e segundo fator para a conta do dono (ver [`SECURITY.md`](SECURITY.md)).
 - Troco para pagamento em dinheiro.
 - Notificação no navegador quando o pedido muda de etapa.

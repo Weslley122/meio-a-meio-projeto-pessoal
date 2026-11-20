@@ -1,0 +1,47 @@
+# Sobe a API + um MySQL de verdade com um comando, sem instalar Java nem MySQL na máquina.
+#
+#   1. copie .env.example para .env e troque as senhas
+#   2. docker compose up --build
+#   3. API em http://localhost:8080  (o app web continua com: cd web && npm run dev)
+#
+# Para parar: docker compose down     (os dados do MySQL ficam no volume "dados-mysql")
+# Para apagar os dados também: docker compose down -v
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: meio_a_meio
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - dados-mysql:/var/lib/mysql
+    # A API só deve subir quando o MySQL estiver aceitando conexões (ver depends_on abaixo).
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./backend          # usa o backend/Dockerfile (build em dois estágios)
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      # Perfil "mysql" (application-mysql.properties), trocando o host "localhost" pelo
+      # nome do serviço: dentro da rede do Compose, o MySQL se chama "mysql".
+      SPRING_PROFILES_ACTIVE: mysql
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/meio_a_meio?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Sao_Paulo
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      APP_CRIPTO_CHAVE: ${APP_CRIPTO_CHAVE}
+      ADMIN_SENHA: ${ADMIN_SENHA}
+      CORS_ORIGIN: http://localhost:5173
+
+volumes:
+  dados-mysql:
