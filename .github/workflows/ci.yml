@@ -47,3 +47,13 @@ jobs:
         run: npm audit --audit-level=high --omit=dev
       - name: Build de produção (com Content-Security-Policy)
         run: npm run build
+
+  docker:
+    name: Docker (imagem da API + compose)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Confere se o docker-compose.yml é válido
+        run: cp .env.example .env && docker compose config --quiet
+      - name: Constrói a imagem da API (mesmo Dockerfile do deploy)
+        run: docker build -t meio-a-meio-api ./backend
